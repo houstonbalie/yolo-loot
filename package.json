@@ -10,7 +10,7 @@
     "predeploy": "npm run build",
     "deploy": "gh-pages -d dist"
   },
-  "homepage": "https://houstonbalie.github.io/yolo-loot",
+  "homepage": "https://houstonbalie.github.io/yolo-loot/",
   "dependencies": {
     "firebase": "^12.7.0",
     "react": "^19.2.3",

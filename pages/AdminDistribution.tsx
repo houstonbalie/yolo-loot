@@ -224,7 +224,7 @@ const AdminDistribution: React.FC = () => {
                                             className="flex-1 lg:flex-none px-6 py-2 bg-primary text-white text-sm font-bold rounded-full shadow-sm flex items-center justify-center gap-2 hover:bg-primary-dark transition-colors"
                                         >
                                             <span className="material-symbols-outlined text-[18px]">check</span>
-                                            Presentear
+                                            Gift
                                         </button>
                                         <button
                                             onClick={() => handleDistribute(player, 'Skipped')}

@@ -8,7 +8,7 @@ const ItemRegistration: React.FC = () => {
 
     // Form State
     const [name, setName] = useState('');
-    const [rarity, setRarity] = useState<Rarity>('Comum');
+    const [rarity, setRarity] = useState<Rarity>('common');
     const [limitToTop5, setLimitToTop5] = useState(false);
     const [stats, setStats] = useState('');
     const [chance, setChance] = useState('');

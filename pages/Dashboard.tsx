@@ -19,10 +19,10 @@ const Dashboard: React.FC = () => {
 
   const getRarityColor = (rarity: string) => {
     switch (rarity) {
-      case 'Lendário': return 'text-orange-500 bg-orange-500/10 border-orange-500/20';
-      case 'Épico': return 'text-purple-500 bg-purple-500/10 border-purple-500/20';
-      case 'Raro': return 'text-blue-500 bg-blue-500/10 border-blue-500/20';
-      case 'Incomum': return 'text-green-500 bg-green-500/10 border-green-500/20';
+      case 'Legendary': return 'text-orange-500 bg-orange-500/10 border-orange-500/20';
+      case 'Epic': return 'text-purple-500 bg-purple-500/10 border-purple-500/20';
+      case 'Rare': return 'text-blue-500 bg-blue-500/10 border-blue-500/20';
+      case 'Uncommon': return 'text-green-500 bg-green-500/10 border-green-500/20';
       default: return 'text-gray-500 bg-gray-500/10 border-gray-500/20';
     }
   };

@@ -82,7 +82,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const distributeItem = async (playerId: string, distItem: DistributableItem, status: LootStatus, consumeItem: boolean = true) => {
     // Determine cost based on a mock logic or default
-    const cost = status === 'Conquistado' ? 50 : 0;
+    const cost = status === 'Acquired' ? 50 : 0;
 
     // Find a matching full item definition if it exists for icons etc, or create generic
     // Note: We use the local 'items' state which is synced with Firebase
@@ -99,7 +99,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     await addLootEvent(newEvent);
 
-    if (status === 'Conquistado') {
+    if (status === 'Acquired') {
       const player = players.find(p => p.id === playerId);
       if (player) {
         const newDkp = Math.max(0, player.dkp - cost);

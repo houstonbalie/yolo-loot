@@ -1,14 +1,19 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { getAuth, onAuthStateChanged } from 'firebase/auth';
 import { useGame } from '../context/GameContext';
 import { Item, Player } from '../types';
 import { getOriginalPlayerQueue, getPlayerQueue as getPlayerQueueUtil } from '../utils/priority';
 
 const Dashboard: React.FC = () => {
-  const { items, players, updateItem } = useGame();
+  const { items, players, updateItem, distributeItem } = useGame();
   const [queueViewMode, setQueueViewMode] = useState<'original' | 'manual'>('original');
   const [draggedPlayer, setDraggedPlayer] = useState<{ itemId: string; playerId: string } | null>(null);
   const [dragOverPlayerId, setDragOverPlayerId] = useState<string | null>(null);
   const [savingItemId, setSavingItemId] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [processingAction, setProcessingAction] = useState<string | null>(null);
+
+  useEffect(() => onAuthStateChanged(getAuth(), user => setIsAdmin(Boolean(user))), []);
 
   // Simulated Logged User ID (Matches 'ThunderGod' in mockData)
   const currentUserId = '1';
@@ -56,6 +61,24 @@ const Dashboard: React.FC = () => {
       ...visibleOriginal,
       ...completeOriginal.filter(player => !visibleIds.has(player.id))
     ]);
+  };
+
+  const handleQuickDistribution = async (item: Item, player: Player, status: 'Acquired' | 'Skipped') => {
+    const actionKey = `${item.id}:${player.id}`;
+    setProcessingAction(actionKey);
+    try {
+      await distributeItem(player.id, {
+        id: `dashboard-${item.id}`,
+        itemId: item.id,
+        name: item.name,
+        quantity: 1
+      }, status, status === 'Acquired');
+    } catch (error) {
+      console.error('Error updating distribution from dashboard:', error);
+      alert('Could not update the distribution. Please try again.');
+    } finally {
+      setProcessingAction(null);
+    }
   };
 
   const getRarityColor = (rarity: string) => {
@@ -218,9 +241,21 @@ const Dashboard: React.FC = () => {
                           <div className="size-7 rounded-lg bg-cover bg-center border border-gray-200 dark:border-gray-700 shrink-0" style={{ backgroundImage: `url('${player.avatarUrl}')` }}></div>
 
                           <div className="flex flex-col min-w-0">
-                            <span className={`text-xs font-bold leading-none truncate max-w-[100px] ${isMe ? 'text-primary' : 'text-gray-900 dark:text-white'}`}>
-                              {player.name}
-                            </span>
+                            <div className="flex items-center gap-1">
+                              <span className={`text-xs font-bold leading-none truncate max-w-[100px] ${isMe ? 'text-primary' : 'text-gray-900 dark:text-white'}`}>
+                                {player.name}
+                              </span>
+                              {isAdmin && (
+                                <div className="flex shrink-0 items-center gap-0.5" onClick={event => event.stopPropagation()}>
+                                  <button type="button" draggable={false} disabled={processingAction !== null} onClick={() => void handleQuickDistribution(item, player, 'Acquired')} className="flex size-5 items-center justify-center rounded text-green-600 hover:bg-green-100 disabled:opacity-40 dark:hover:bg-green-900/30" title="Mark as acquired">
+                                    <span className="material-symbols-outlined text-[15px] font-bold">check</span>
+                                  </button>
+                                  <button type="button" draggable={false} disabled={processingAction !== null} onClick={() => void handleQuickDistribution(item, player, 'Skipped')} className="flex size-5 items-center justify-center rounded text-red-500 hover:bg-red-100 disabled:opacity-40 dark:hover:bg-red-900/30" title="Skip this player">
+                                    <span className="material-symbols-outlined text-[15px] font-bold">close</span>
+                                  </button>
+                                </div>
+                              )}
+                            </div>
                             <span className="text-[9px] text-gray-500 truncate">{player.class}</span>
                           </div>
                         </div>

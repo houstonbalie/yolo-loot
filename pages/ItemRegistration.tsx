@@ -2,13 +2,14 @@ import React, { useState, useRef } from 'react';
 import { useGame } from '../context/GameContext';
 import { Rarity, Item } from '../types';
 import AdminGuard from '../components/AdminGuard';
+import ConfirmationModal from '../components/ConfirmationModal';
 
 const ItemRegistration: React.FC = () => {
     const { addItem, items, updateItem, deleteItem } = useGame();
 
     // Form State
     const [name, setName] = useState('');
-    const [rarity, setRarity] = useState<Rarity>('common');
+    const [rarity, setRarity] = useState<Rarity>('Common');
     const [limitToTop5, setLimitToTop5] = useState(false);
     const [stats, setStats] = useState('');
     const [chance, setChance] = useState('');
@@ -16,6 +17,8 @@ const ItemRegistration: React.FC = () => {
     const [iconUrl, setIconUrl] = useState('');
     const [editingId, setEditingId] = useState<string | null>(null);
     const [success, setSuccess] = useState(false);
+    const [itemPendingDeletion, setItemPendingDeletion] = useState<Item | null>(null);
+    const [isDeletingItem, setIsDeletingItem] = useState(false);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -114,7 +117,7 @@ const ItemRegistration: React.FC = () => {
         setLimitToTop5(false);
         setCost('');
         setIconUrl('');
-        setRarity('Comum');
+        setRarity('Common');
         setEditingId(null);
         if (fileInputRef.current) fileInputRef.current.value = '';
     };
@@ -176,9 +179,19 @@ const ItemRegistration: React.FC = () => {
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
-    const handleDelete = async (id: string) => {
-        if (window.confirm('Are you sure you want to delete this item?')) {
-            await deleteItem(id);
+    const handleDelete = async () => {
+        if (!itemPendingDeletion) return;
+
+        setIsDeletingItem(true);
+        try {
+            await deleteItem(itemPendingDeletion.id);
+            if (editingId === itemPendingDeletion.id) resetForm();
+            setItemPendingDeletion(null);
+        } catch (error) {
+            console.error('Error deleting item:', error);
+            alert('Could not delete the item. Please try again.');
+        } finally {
+            setIsDeletingItem(false);
         }
     };
 
@@ -394,9 +407,9 @@ const ItemRegistration: React.FC = () => {
                             </div>
 
                             <div>
-                                <h3 className="text-2xl font-bold text-gray-900 dark:text-white leading-tight">{name || 'Nome do Item'}</h3>
+                                <h3 className="text-2xl font-bold text-gray-900 dark:text-white leading-tight">{name || 'Item Name'}</h3>
                                 <div className="flex flex-wrap items-center gap-3 mt-3">
-                                    <span className="text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 px-3 py-1.5 rounded-lg border border-gray-100 dark:border-gray-700">{stats || 'Atributos...'}</span>
+                                    <span className="text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 px-3 py-1.5 rounded-lg border border-gray-100 dark:border-gray-700">{stats || 'Attributes...'}</span>
                                     <span className="text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 px-3 py-1.5 rounded-lg border border-gray-100 dark:border-gray-700">Chance: {chance || '0%'}</span>
                                 </div>
                             </div>
@@ -437,14 +450,14 @@ const ItemRegistration: React.FC = () => {
                                         {item.rarity}
                                     </div>
 
-                                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                                        <button onClick={() => handleEdit(item)} className="p-2 bg-white rounded-lg text-primary hover:bg-primary hover:text-white transition-colors" title="Editar">
+                                    <div className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-2 bg-black/65 p-2 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100">
+                                        <button onClick={() => handleEdit(item)} className="p-2 bg-white rounded-lg text-primary hover:bg-primary hover:text-white transition-colors" title="Edit">
                                             <span className="material-symbols-outlined">edit</span>
                                         </button>
-                                        <button onClick={() => handleClone(item)} className="p-2 bg-white rounded-lg text-green-600 hover:bg-green-600 hover:text-white transition-colors" title="Clonar">
+                                        <button onClick={() => handleClone(item)} className="p-2 bg-white rounded-lg text-green-600 hover:bg-green-600 hover:text-white transition-colors" title="Clone">
                                             <span className="material-symbols-outlined">content_copy</span>
                                         </button>
-                                        <button onClick={() => handleDelete(item.id)} className="p-2 bg-white rounded-lg text-red-500 hover:bg-red-500 hover:text-white transition-colors" title="Excluir">
+                                        <button onClick={() => setItemPendingDeletion(item)} className="p-2 bg-white rounded-lg text-red-500 hover:bg-red-500 hover:text-white transition-colors" title="Delete">
                                             <span className="material-symbols-outlined">delete</span>
                                         </button>
                                     </div>
@@ -469,6 +482,15 @@ const ItemRegistration: React.FC = () => {
                     </div>
                 </div>
 
+                <ConfirmationModal
+                    isOpen={itemPendingDeletion !== null}
+                    title="Delete item?"
+                    message={`This will permanently delete "${itemPendingDeletion?.name ?? ''}". Existing history records will remain, but the item will no longer be available for future distributions.`}
+                    confirmLabel="Delete Item"
+                    isProcessing={isDeletingItem}
+                    onConfirm={handleDelete}
+                    onCancel={() => setItemPendingDeletion(null)}
+                />
             </div>
         </AdminGuard>
     );

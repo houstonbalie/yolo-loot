@@ -6,7 +6,8 @@ import {
     doc,
     query,
     orderBy,
-    updateDoc
+    updateDoc,
+    writeBatch
 } from 'firebase/firestore';
 import { db } from './firebase';
 import { Player, Item, LootEvent } from '../types';
@@ -31,6 +32,30 @@ export const subscribeToPlayers = (callback: (players: Player[]) => void) => {
 
 export const addPlayer = async (player: Omit<Player, 'id'>) => {
     return await addDoc(collection(db, PLAYERS_COLLECTION), player);
+};
+
+export const addPlayerWithQueues = async (
+    player: Omit<Player, 'id'>,
+    itemQueues: Array<{ itemId: string; queuePlayerIds: string[]; insertionIndex: number }>
+) => {
+    const batch = writeBatch(db);
+    const playerRef = doc(collection(db, PLAYERS_COLLECTION));
+    batch.set(playerRef, player);
+
+    for (const { itemId, queuePlayerIds, insertionIndex } of itemQueues) {
+        const uniqueIds = queuePlayerIds.filter(id => id !== playerRef.id);
+        const safeIndex = Math.max(0, Math.min(insertionIndex, uniqueIds.length));
+        batch.update(doc(db, ITEMS_COLLECTION, itemId), {
+            queuePlayerIds: [
+                ...uniqueIds.slice(0, safeIndex),
+                playerRef.id,
+                ...uniqueIds.slice(safeIndex)
+            ]
+        });
+    }
+
+    await batch.commit();
+    return playerRef;
 };
 
 export const deletePlayer = async (id: string) => {
@@ -84,6 +109,36 @@ export const subscribeToHistory = (callback: (history: LootEvent[]) => void) => 
 
 export const addLootEvent = async (event: Omit<LootEvent, 'id'>) => {
     return await addDoc(collection(db, HISTORY_COLLECTION), event);
+};
+
+export const commitDistribution = async ({
+    events,
+    itemId,
+    queuePlayerIds,
+    lastRecipientId,
+    playerUpdate
+}: {
+    events: Array<Omit<LootEvent, 'id'>>;
+    itemId: string;
+    queuePlayerIds: string[];
+    lastRecipientId?: string;
+    playerUpdate?: { playerId: string; data: Partial<Player> };
+}) => {
+    const batch = writeBatch(db);
+
+    for (const event of events) {
+        batch.set(doc(collection(db, HISTORY_COLLECTION)), event);
+    }
+
+    const itemData: Partial<Item> = { queuePlayerIds };
+    if (lastRecipientId) itemData.lastRecipientId = lastRecipientId;
+    batch.update(doc(db, ITEMS_COLLECTION, itemId), itemData);
+
+    if (playerUpdate) {
+        batch.update(doc(db, PLAYERS_COLLECTION, playerUpdate.playerId), playerUpdate.data);
+    }
+
+    await batch.commit();
 };
 
 export const deleteLootEvent = async (id: string) => {

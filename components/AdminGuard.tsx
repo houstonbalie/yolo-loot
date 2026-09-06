@@ -36,7 +36,7 @@ const AdminGuard: React.FC<AdminGuardProps> = ({ children }) => {
                 setIsAuthenticated(true);
                 setError(false);
             } catch (err) {
-                console.error("Erro na autenticação:", err);
+                console.error("Authentication error:", err);
                 setError(true);
             } finally {
                 setIsLoading(false);

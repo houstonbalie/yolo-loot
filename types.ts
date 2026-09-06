@@ -9,6 +9,7 @@ export interface Player {
   role: 'DPS' | 'Tank' | 'Healer';
   avatarUrl: string;
   status: 'Online' | 'Offline';
+  excludedItemIds?: string[];
 }
 
 export type Rarity = 'Legendary' | 'Epic' | 'Rare' | 'Uncommon' | 'Common';
@@ -23,7 +24,12 @@ export interface Item {
   cost: number; // DKP Cost
   lastRecipientId?: string; // ID of the last player who received this item
   limitToTop5?: boolean; // If true, only the top 5 players are eligible
+  queuePlayerIds?: string[]; // Persistent, circular distribution order
 }
+
+export type NewPlayer = Omit<Player, 'id' | 'dkp' | 'avatarUrl' | 'status'> & {
+  avatarUrl?: string;
+};
 
 export type LootStatus = 'Acquired' | 'Skipped' | 'Absent' | 'Did Not Take';
 
@@ -39,6 +45,7 @@ export interface LootEvent {
 
 export interface DistributableItem {
   id: string;
+  itemId: string;
   name: string;
   quantity: number;
 }

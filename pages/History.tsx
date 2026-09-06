@@ -1,10 +1,13 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useGame } from '../context/GameContext';
 import { LootStatus, Player } from '../types';
 import { PlayerProfileModal } from '../components/PlayerProfileModal';
+import ConfirmationModal from '../components/ConfirmationModal';
+
+const PAGE_SIZE = 10;
 
 const History: React.FC = () => {
-    const { lootHistory, items, players } = useGame();
+    const { lootHistory, items, players, clearHistory } = useGame();
 
     // Filters
     const [selectedPlayer, setSelectedPlayer] = useState<string>('All');
@@ -12,55 +15,76 @@ const History: React.FC = () => {
     const [statusFilter, setStatusFilter] = useState<'All' | LootStatus>('All');
     const [selectedItem, setSelectedItem] = useState<string>('All');
     const [viewingPlayer, setViewingPlayer] = useState<Player | null>(null);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [showClearConfirmation, setShowClearConfirmation] = useState(false);
+    const [isClearingHistory, setIsClearingHistory] = useState(false);
 
     // Derived Data
     const filteredHistory = lootHistory.filter(event => {
         const matchesPlayer = selectedPlayer === 'All' || event.playerId === selectedPlayer;
-        const matchesDate = !selectedDate || event.date.includes(selectedDate.split('-').reverse().join('/')); // Formatting date match
-        // Note: event.date is stored as "DD/MM HH:mm" or similar, input is "YYYY-MM-DD"
-        // Let's rely on simple string inclusion or standardizing if needed. 
-        // Current format in GameContext: new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
-        // Example: "20 abr. 14:30"
-        // The date filter input returns YYYY-MM-DD e.g., "2024-04-20".
-        // Matching strictly might be hard without standardized ISO dates. 
-        // For now, I will implement a simpler "Month/Year" check or just ignore date filter complexity if format mismatch is high,
-        // BUT user asked for date filter. 
-        // Let's standardise on just matching specific parts if easier, or try converting.
-        // Actually, let's keep it simple: Date filter might be tricky with "20 jan. 10:00" format.
-        // I will try to match Day and Month if possible.
-        // Better yet, let's just match the string if user types it? No, type="date" is better UI.
-        // Let's accept that for now valid matches might require format alignment. 
-        // I'll leave the date check simple for now: if selectedDate is set, check if our event date string contains the day/month.
-
-        // Attempt to parse selectedDate (YYYY-MM-DD) to "DD MMM"
-        let matchesDateSmart = true;
-        if (selectedDate) {
-            const [year, month, day] = selectedDate.split('-');
-            // "20" "04"
-            // Locale pt-BR month short: "abr." or "abr" depending on browser.
-            // This is brittle. I will do a text search on the event date string using the DAY.
-            matchesDateSmart = event.date.startsWith(day);
-        }
+        const selectedDay = selectedDate.split('-')[2];
+        const matchesDate = !selectedDate
+            || event.date.startsWith(selectedDate)
+            || Boolean(selectedDay && event.date.startsWith(selectedDay));
 
         const matchesItem = selectedItem === 'All' || event.itemId === selectedItem;
         const matchesStatus = statusFilter === 'All' || event.status === statusFilter;
 
-        return matchesPlayer && (selectedDate ? matchesDateSmart : true) && matchesStatus && matchesItem;
+        return matchesPlayer && matchesDate && matchesStatus && matchesItem;
     });
 
     const totalDistributed = lootHistory.filter(e => e.status === 'Acquired').length;
     const filteredCount = filteredHistory.length;
+    const totalPages = Math.max(1, Math.ceil(filteredCount / PAGE_SIZE));
+    const paginatedHistory = filteredHistory.slice(
+        (currentPage - 1) * PAGE_SIZE,
+        currentPage * PAGE_SIZE
+    );
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [selectedPlayer, selectedDate, statusFilter, selectedItem]);
+
+    useEffect(() => {
+        setCurrentPage(page => Math.min(page, totalPages));
+    }, [totalPages]);
+
+    const handleClearHistory = async () => {
+        setIsClearingHistory(true);
+        try {
+            await clearHistory();
+            setShowClearConfirmation(false);
+            setCurrentPage(1);
+        } catch (error) {
+            console.error('Error clearing history:', error);
+            alert('Could not clear the history. Please try again.');
+        } finally {
+            setIsClearingHistory(false);
+        }
+    };
 
     const getItemIcon = (itemId: string) => items.find(i => i.id === itemId)?.iconUrl || '';
     const getItemRarity = (itemId: string) => items.find(i => i.id === itemId)?.rarity || 'Common';
     const getItemName = (itemId: string) => items.find(i => i.id === itemId)?.name || 'Unknown Item';
     const getPlayerName = (playerId: string) => players.find(p => p.id === playerId)?.name || 'Unknown';
     const getPlayerAvatar = (playerId: string) => players.find(p => p.id === playerId)?.avatarUrl || '';
+    const formatEventDate = (value: string) => {
+        const parsed = new Date(value);
+        if (!Number.isNaN(parsed.getTime())) {
+            return {
+                date: parsed.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }),
+                time: parsed.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+            };
+        }
+
+        const parts = value.split(' ');
+        return { date: parts.slice(0, 2).join(' '), time: parts.slice(2).join(' ') };
+    };
 
     return (
         <div className="mx-auto flex w-full max-w-[1200px] flex-col gap-8 px-4 py-8 md:px-10">
             {/* Page Heading */}
-            <div className="flex flex-col gap-4 animate-fade-in-up">
+            <div className="flex flex-col gap-4 animate-fade-in-up sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-3">
                     <div className="p-3 bg-primary/10 rounded-2xl text-primary">
                         <span className="material-symbols-outlined text-2xl">history</span>
@@ -81,6 +105,15 @@ const History: React.FC = () => {
                         </div>
                     </div>
                 </div>
+                <button
+                    type="button"
+                    onClick={() => setShowClearConfirmation(true)}
+                    disabled={lootHistory.length === 0}
+                    className="flex h-11 items-center justify-center gap-2 rounded-xl border border-red-200 bg-white px-5 text-sm font-bold text-red-600 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-red-900/50 dark:bg-surface-dark dark:hover:bg-red-900/20"
+                >
+                    <span className="material-symbols-outlined text-lg">delete_sweep</span>
+                    Clear History
+                </button>
             </div>
 
             {/* Item Filter Icons */}
@@ -187,20 +220,21 @@ const History: React.FC = () => {
 
             {/* List */}
             <div className="grid gap-4">
-                {filteredHistory.map((event) => {
+                {paginatedHistory.map((event) => {
                     const icon = getItemIcon(event.itemId);
                     const rarity = getItemRarity(event.itemId);
                     const itemName = getItemName(event.itemId);
                     const playerName = getPlayerName(event.playerId);
                     const playerAvatar = getPlayerAvatar(event.playerId);
+                    const eventDate = formatEventDate(event.date);
 
                     return (
                         <div key={event.id} className="group flex flex-col md:flex-row items-start md:items-center gap-6 p-4 rounded-2xl bg-surface-light dark:bg-surface-dark border border-gray-100 dark:border-gray-800 hover:border-primary/30 hover:shadow-lg transition-all">
 
                             {/* Date & Time */}
                             <div className="min-w-[100px] flex flex-row md:flex-col items-center md:items-start gap-2 md:gap-0">
-                                <span className="text-sm font-bold text-text-main dark:text-white">{event.date.split(' ')[0]} {event.date.split(' ')[1]}</span>
-                                <span className="text-xs font-medium text-text-muted">{event.date.split(' ')[2]}</span>
+                                <span className="text-sm font-bold text-text-main dark:text-white">{eventDate.date}</span>
+                                <span className="text-xs font-medium text-text-muted">{eventDate.time}</span>
                             </div>
 
                             <div className="hidden md:block w-px h-10 bg-gray-200 dark:bg-gray-700"></div>
@@ -221,7 +255,7 @@ const History: React.FC = () => {
                             </div>
 
                             {/* Action Badge */}
-                            <div className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider flex items-center gap-1 ${event.status === 'Conquistado'
+                            <div className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider flex items-center gap-1 ${event.status === 'Acquired'
                                 ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
                                 : event.status === 'Skipped'
                                     ? 'bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400'
@@ -255,6 +289,36 @@ const History: React.FC = () => {
                     )
                 })}
             </div>
+            {filteredCount > PAGE_SIZE && (
+                <nav className="flex flex-col items-center justify-between gap-4 rounded-2xl border border-gray-100 bg-surface-light p-4 sm:flex-row dark:border-gray-800 dark:bg-surface-dark" aria-label="History pagination">
+                    <span className="text-sm text-gray-500 dark:text-gray-400">
+                        Showing {(currentPage - 1) * PAGE_SIZE + 1}-{Math.min(currentPage * PAGE_SIZE, filteredCount)} of {filteredCount}
+                    </span>
+                    <div className="flex items-center gap-2">
+                        <button
+                            type="button"
+                            onClick={() => setCurrentPage(page => Math.max(1, page - 1))}
+                            disabled={currentPage === 1}
+                            className="flex size-10 items-center justify-center rounded-lg border border-gray-200 text-gray-600 transition-colors hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-40 dark:border-gray-700 dark:text-gray-300"
+                            aria-label="Previous page"
+                        >
+                            <span className="material-symbols-outlined">chevron_left</span>
+                        </button>
+                        <span className="min-w-24 text-center text-sm font-bold text-text-main dark:text-white">
+                            Page {currentPage} of {totalPages}
+                        </span>
+                        <button
+                            type="button"
+                            onClick={() => setCurrentPage(page => Math.min(totalPages, page + 1))}
+                            disabled={currentPage === totalPages}
+                            className="flex size-10 items-center justify-center rounded-lg border border-gray-200 text-gray-600 transition-colors hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-40 dark:border-gray-700 dark:text-gray-300"
+                            aria-label="Next page"
+                        >
+                            <span className="material-symbols-outlined">chevron_right</span>
+                        </button>
+                    </div>
+                </nav>
+            )}
             {/* Modal */}
             {viewingPlayer && (
                 <PlayerProfileModal
@@ -262,6 +326,15 @@ const History: React.FC = () => {
                     onClose={() => setViewingPlayer(null)}
                 />
             )}
+            <ConfirmationModal
+                isOpen={showClearConfirmation}
+                title="Clear all history?"
+                message="This will permanently remove every loot history record. This action cannot be undone."
+                confirmLabel="Clear History"
+                isProcessing={isClearingHistory}
+                onConfirm={handleClearHistory}
+                onCancel={() => setShowClearConfirmation(false)}
+            />
         </div>
     );
 };

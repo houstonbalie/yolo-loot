@@ -7,7 +7,7 @@ import AdminGuard from '../components/AdminGuard';
 import { PlayerProfileModal } from '../components/PlayerProfileModal';
 
 const PlayerRegistration: React.FC = () => {
-    const { addPlayer, players, updatePlayer, deletePlayer } = useGame();
+    const { addPlayer, players, items, updatePlayer, deletePlayer } = useGame();
 
     // Form State
     const [name, setName] = useState('');
@@ -17,6 +17,8 @@ const PlayerRegistration: React.FC = () => {
     const [editingId, setEditingId] = useState<string | null>(null);
     const [success, setSuccess] = useState(false);
     const [viewingPlayer, setViewingPlayer] = useState<Player | null>(null);
+    const [excludedItemIds, setExcludedItemIds] = useState<string[]>([]);
+    const [appendToQueueEnd, setAppendToQueueEnd] = useState(true);
 
     const classAvatars: Record<ClassType, string> = {
         'Elf': 'https://api.dicebear.com/7.x/avataaars/svg?seed=Elf&backgroundColor=c0aede',
@@ -95,15 +97,16 @@ const PlayerRegistration: React.FC = () => {
                     name,
                     class: selectedClass,
                     cp,
-                    role: (selectedClass === 'Cavaleiro' || selectedClass === 'Lorde') ? 'Tank' : 'DPS' as 'DPS' | 'Tank' | 'Healer',
-                    avatarUrl
+                    role: (selectedClass === 'Dark Knight' || selectedClass === 'Dark Lord') ? 'Tank' : 'DPS' as 'DPS' | 'Tank' | 'Healer',
+                    avatarUrl,
+                    excludedItemIds
                 };
 
                 if (editingId) {
                     await updatePlayer(editingId, playerData);
                     setEditingId(null);
                 } else {
-                    await addPlayer(playerData);
+                    await addPlayer(playerData, appendToQueueEnd);
                 }
 
                 setSuccess(true);
@@ -123,6 +126,8 @@ const PlayerRegistration: React.FC = () => {
         setSelectedClass('');
         setCp('');
         setAvatarUrl('');
+        setExcludedItemIds([]);
+        setAppendToQueueEnd(true);
         if (fileInputRef.current) fileInputRef.current.value = '';
         setEditingId(null);
     };
@@ -132,6 +137,7 @@ const PlayerRegistration: React.FC = () => {
         setSelectedClass(player.class);
         setCp(player.cp);
         setAvatarUrl(player.avatarUrl || '');
+        setExcludedItemIds(player.excludedItemIds ?? []);
         setEditingId(player.id);
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
@@ -141,6 +147,8 @@ const PlayerRegistration: React.FC = () => {
         setSelectedClass(player.class);
         setCp(player.cp);
         setAvatarUrl(player.avatarUrl || '');
+        setExcludedItemIds(player.excludedItemIds ?? []);
+        setAppendToQueueEnd(true);
         setEditingId(null); // Ensure it creates a new one
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
@@ -205,7 +213,7 @@ const PlayerRegistration: React.FC = () => {
                                 <div className="space-y-3">
                                     <label className="flex items-center gap-2 text-sm font-bold text-text-main dark:text-gray-200">
                                         <span className="material-symbols-outlined text-primary text-[18px]">swords</span>
-                                        Classe
+                                        Class
                                     </label>
                                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                                         {CLASSES.map((cls) => (
@@ -289,7 +297,7 @@ const PlayerRegistration: React.FC = () => {
                                                     className="w-full px-4 py-2 bg-primary/10 text-primary hover:bg-primary hover:text-white text-xs font-bold rounded-xl transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
                                                 >
                                                     <span className="material-symbols-outlined text-base">smart_toy</span>
-                                                    Classe
+                                                    Class avatar
                                                 </button>
                                                 <button
                                                     type="button"
@@ -297,12 +305,60 @@ const PlayerRegistration: React.FC = () => {
                                                     className="w-full px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 text-xs font-bold rounded-xl transition-colors flex items-center justify-center gap-2 whitespace-nowrap"
                                                 >
                                                     <span className="material-symbols-outlined text-base">upload</span>
-                                                    Enviar
+                                                    Upload
                                                 </button>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
+
+                                <div className="space-y-3">
+                                    <label className="flex items-center gap-2 text-sm font-bold text-text-main dark:text-gray-200">
+                                        <span className="material-symbols-outlined text-primary text-[18px]">block</span>
+                                        Unwanted items
+                                    </label>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                                        The player will not appear in the queue for selected items.
+                                    </p>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-44 overflow-y-auto rounded-xl border border-border-light dark:border-border-dark p-3">
+                                        {items.map(item => {
+                                            const checked = excludedItemIds.includes(item.id);
+                                            return (
+                                                <label key={item.id} className="flex items-center gap-3 rounded-lg p-2 hover:bg-primary/5 cursor-pointer">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={checked}
+                                                        onChange={() => setExcludedItemIds(current =>
+                                                            checked
+                                                                ? current.filter(id => id !== item.id)
+                                                                : [...current, item.id]
+                                                        )}
+                                                        className="size-4 accent-primary"
+                                                    />
+                                                    <span className="text-sm font-medium text-gray-700 dark:text-gray-200">{item.name}</span>
+                                                </label>
+                                            );
+                                        })}
+                                        {items.length === 0 && (
+                                            <span className="text-xs text-gray-400">No items registered.</span>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {!editingId && (
+                                    <label className="flex items-start gap-3 rounded-xl bg-primary/5 border border-primary/15 p-4 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={appendToQueueEnd}
+                                            onChange={event => setAppendToQueueEnd(event.target.checked)}
+                                            className="mt-0.5 size-4 accent-primary"
+                                        />
+                                        <span>
+                                            <span className="block text-sm font-bold text-text-main dark:text-gray-200">Add to the end of all queues</span>
+                                            <span className="block text-xs text-gray-500 dark:text-gray-400 mt-1">Prevents a new player from moving ahead of players already waiting.</span>
+                                        </span>
+                                    </label>
+                                )}
 
                                 <div className="flex items-center gap-3 pt-4">
                                     {editingId && (
@@ -311,7 +367,7 @@ const PlayerRegistration: React.FC = () => {
                                             onClick={resetForm}
                                             className="h-12 px-6 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-500 font-bold hover:bg-gray-50 dark:hover:bg-white/5 transition-colors"
                                         >
-                                            Cancelar
+                                            Cancel
                                         </button>
                                     )}
                                     <button
@@ -379,21 +435,21 @@ const PlayerRegistration: React.FC = () => {
                                             <button
                                                 onClick={() => handleClone(player)}
                                                 className="p-2 text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
-                                                title="Clonar (Novo ID)"
+                                                title="Clone (New ID)"
                                             >
                                                 <span className="material-symbols-outlined text-xl">content_copy</span>
                                             </button>
                                             <button
                                                 onClick={() => handleEdit(player)}
                                                 className="p-2 text-gray-400 hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
-                                                title="Editar"
+                                                title="Edit"
                                             >
                                                 <span className="material-symbols-outlined text-xl">edit</span>
                                             </button>
                                             <button
                                                 onClick={() => handleDelete(player.id)}
                                                 className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-                                                title="Excluir"
+                                                title="Delete"
                                             >
                                                 <span className="material-symbols-outlined text-xl">delete</span>
                                             </button>

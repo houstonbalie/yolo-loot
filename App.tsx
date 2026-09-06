@@ -15,12 +15,12 @@ const App: React.FC = () => {
       <Router>
         <Layout>
           <Routes>
-            {/* Rotas Públicas */}
+            {/* Public routes */}
             <Route path="/" element={<Dashboard />} />
             <Route path="/history" element={<History />} />
             <Route path="/drops" element={<Navigate to="/history" replace />} />
 
-            {/* Rotas Protegidas pela Autenticação Anônima + Senha */}
+            {/* Routes protected by anonymous authentication and password */}
             <Route 
               path="/register" 
               element={

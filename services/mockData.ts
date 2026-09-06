@@ -46,45 +46,45 @@ export const INITIAL_PLAYERS: Player[] = [
 export const MOCK_ITEMS: Item[] = [
   {
     id: 'item1',
-    name: 'Baú do Arcanjo',
+    name: 'Archangel Chest',
     rarity: 'Legendary',
-    stats: 'Contém item Excelente',
+    stats: 'Contains an Excellent item',
     chance: '1.0%',
     iconUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDkL-u-yUd5MmGxd6GrKte3C2bE1d9vXnXIczh6vQ1vFnZEoVVqIMlyktaMoazBp84Ona5MjylcZ9Jo1thB8Lrx3ja2ae4fZlxtU04VT8SGwBoVyqrNTIM7HoIkdmIdUuGS9mMZav2VvCrSWUr3QucqsKnrj9LnlQEO8nPNbxcaPVPXPsWidg9diGQuADerhTK4R16KfFfR46Ta19ErxvNu1uBlYdBkc2huxasU2QGNutbvXob6oJ5gtTrz-nxkouD-Iv3g9YIsltjj',
     cost: 500
   },
   {
     id: 'item2',
-    name: 'Chama do Condor',
+    name: 'Condor Flame',
     rarity: 'Epic',
-    stats: 'Material de Asa Lvl 3',
+    stats: 'Level 3 Wing material',
     chance: '2.5%',
     iconUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCkdDSk486oh3e_SZ-NPWJMyo3s-OGZ2YnxCHUANyeD3SpCEiofTnagOqUlzu8udSQ0Si9lYu2X2_hWPaOScVobnuftFvu2YbxIiFRKmUHi0edHZq_kSROuAJ7jQOpuKjApQSVUJx41wE84WtRiM6FZNB7wpEpVDMaUQp1TgV6lP3Glx2r0yqmj3bF2GhCFIXkvpHDvMxf6exl-iux6IFSOIijKDesWVuzASeVWoYa6ouamMiIkiqYpxi2syS3i0saDLk-11vjplskU',
     cost: 150
   },
   {
     id: 'item3',
-    name: 'Pena do Condor',
+    name: 'Condor Feather',
     rarity: 'Epic',
-    stats: 'Material de Asa Lvl 3',
+    stats: 'Level 3 Wing material',
     chance: '2.5%',
     iconUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuC5OLMWYEP66suY8WSq3CjyqWrfyV2s7aBtxWL7mYIRLEn0aK9PHQUnWLqrHtcHcQDjK6uPRKcAMhbael-sFh7tdNemw0jDwR5DUrvLC9CgdY_oFXeGPUar-u3FC5XnUddnYfiow1oKaUWKOb_1p2nW-qNY1M02rNvuRYiTcqtjIbBqf8_Kok72Dus705NQRRFSdAoMrBEpnMKha2bQmXOJPyjTSRzsNkEiYhM5TJAyPCLRICDuXIp4usYLD6odSeOKyrJdyB4kFGMo',
     cost: 150
   },
   {
     id: 'item4',
-    name: 'Pedra do Caos',
+    name: 'Chaos Stone',
     rarity: 'Rare',
-    stats: 'Material de Combinação',
+    stats: 'Combination material',
     chance: '5.0%',
     iconUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuD2zgO49YVHs9QoXZB37bhLLYsDADg18yRpNfwyhputEB8LC1a9M4ILfYwOKGSY_toHY3lcmghQKcBSo3V6dwo-HZBFsFSNyM4CbQu83E91bVV4tibmYwQKWayRD7J2eoZMgXy82dxSUQ6w2Z6kPpZoacVrGDZ7rXimawm07T-yC3R8txcPrCgMwDbEwicWYig7aXE8IpbH-UZrAqmugAs9nLij3tUG65Abxl3GIfv3k9jE3zOQtvYKJGEhDWD2Dq-CUhUFyw-NWtjs',
     cost: 50
   },
   {
     id: 'item5',
-    name: 'Alma',
+    name: 'Soul',
     rarity: 'Uncommon',
-    stats: 'Joia de Aprimoramento',
+    stats: 'Upgrade jewel',
     chance: '10.0%',
     iconUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAHlJU6SBR73wsXzFvwKvNCzg89yjYJW_gxRF_xsJBMStQHVdPdxbIbs-ogZ7EGt87SZfiARVloPknlTx2U5ZmkOBm5rUjIz-I5UW-ae_XmaNF95XDBcZHk0c5rVkM-QpNB8KLz8Hs_uZ41SyECBlyfSN--MWIfddiPdr9XRY47FALY69ROlsYzma9MmXIeD-pVCY8KYvwanteUT-kle9HWot-agpuzHEb6JtcYn3IO9P-Pj8sWuWO6y5tTO-KI5DJph_n-n5gaelpL',
     cost: 10

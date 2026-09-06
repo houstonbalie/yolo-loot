@@ -1,33 +1,35 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import { Player, Item, LootEvent, DistributableItem, LootStatus } from '../types';
+import { Player, Item, LootEvent, DistributableItem, LootStatus, NewPlayer } from '../types';
 import {
   subscribeToPlayers,
   subscribeToItems,
   subscribeToHistory,
-  addPlayer,
+  addPlayerWithQueues,
   addItem,
-  addLootEvent,
   updatePlayer,
   deletePlayer,
   deleteItem,
   updateItem,
-  deleteLootEvent
+  deleteLootEvent,
+  commitDistribution
 } from '../services/dataService';
+import { getNewPlayerInsertionIndex, getQueuePlayerIds, movePlayerToQueueEnd, rotateQueueThroughPlayer } from '../utils/priority';
+import { parseCP } from '../utils/formatters';
 
 interface GameContextType {
   players: Player[];
   items: Item[];
   lootHistory: LootEvent[];
   distributionQueue: DistributableItem[];
-  addPlayer: (player: Omit<Player, 'id' | 'dkp' | 'avatarUrl' | 'status'>) => void;
+  addPlayer: (player: NewPlayer, appendToQueueEnd?: boolean) => Promise<void>;
   addItem: (item: Omit<Item, 'id'>) => void;
   deletePlayer: (id: string) => Promise<void>;
   updatePlayer: (id: string, data: Partial<Player>) => Promise<void>;
   deleteItem: (id: string) => Promise<void>;
   updateItem: (id: string, data: Partial<Item>) => Promise<void>;
-  addToDistributionQueue: (itemName: string, quantity: number) => void;
+  addToDistributionQueue: (item: Item, quantity: number) => void;
   removeFromDistributionQueue: (id: string) => void;
-  distributeItem: (playerId: string, item: DistributableItem, status: LootStatus, consumeItem?: boolean) => void;
+  distributeItem: (playerId: string, item: DistributableItem, status: LootStatus, consumeItem?: boolean) => Promise<void>;
   clearPlayers: () => Promise<void>;
   clearItems: () => Promise<void>;
   clearHistory: () => Promise<void>;
@@ -54,24 +56,42 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
   }, []);
 
-  const handleAddPlayer = async (newPlayerData: Omit<Player, 'id' | 'dkp' | 'avatarUrl' | 'status'>) => {
+  const handleAddPlayer = async (newPlayerData: NewPlayer, appendToQueueEnd: boolean = true) => {
     const newPlayer: Omit<Player, 'id'> = {
       ...newPlayerData,
       dkp: 0,
-      avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${newPlayerData.name}`,
+      avatarUrl: newPlayerData.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${newPlayerData.name}`,
       status: 'Online'
     };
-    await addPlayer(newPlayer);
+
+    const itemQueues = items
+      .filter(item => !(newPlayer.excludedItemIds ?? []).includes(item.id))
+      .map(item => {
+        const queuePlayerIds = getQueuePlayerIds(item, players);
+        const insertionIndex = getNewPlayerInsertionIndex(
+          queuePlayerIds,
+          players,
+          newPlayer.cp,
+          appendToQueueEnd
+        );
+        return { itemId: item.id, queuePlayerIds, insertionIndex };
+      });
+
+    await addPlayerWithQueues(newPlayer, itemQueues);
   };
 
   const handleAddItem = async (newItemData: Omit<Item, 'id'>) => {
-    await addItem(newItemData);
+    const queuePlayerIds = [...players]
+      .sort((a, b) => parseCP(b.cp) - parseCP(a.cp))
+      .map(player => player.id);
+    await addItem({ ...newItemData, queuePlayerIds });
   };
 
-  const addToDistributionQueue = (itemName: string, quantity: number) => {
+  const addToDistributionQueue = (item: Item, quantity: number) => {
     setDistributionQueue(prev => [...prev, {
       id: Math.random().toString(36).substr(2, 9),
-      name: itemName,
+      itemId: item.id,
+      name: item.name,
       quantity
     }]);
   };
@@ -80,34 +100,58 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setDistributionQueue(prev => prev.filter(item => item.id !== id));
   };
 
+  const handleDeleteItem = async (id: string) => {
+    await deleteItem(id);
+    setDistributionQueue(queue => queue.filter(item => item.itemId !== id));
+  };
+
   const distributeItem = async (playerId: string, distItem: DistributableItem, status: LootStatus, consumeItem: boolean = true) => {
     // Determine cost based on a mock logic or default
-    const cost = status === 'Acquired' ? 50 : 0;
+    const fullItem = items.find(i => i.id === distItem.itemId);
+    if (!fullItem) throw new Error(`Item not found: ${distItem.name}`);
+    const cost = status === 'Acquired' ? fullItem.cost : 0;
 
-    // Find a matching full item definition if it exists for icons etc, or create generic
-    // Note: We use the local 'items' state which is synced with Firebase
-    const fullItem = items.find(i => i.name.toLowerCase().includes(distItem.name.toLowerCase())) || items[0] || { id: 'unknown', name: distItem.name, iconUrl: '', rarity: 'Comum' };
+    const currentQueue = getQueuePlayerIds(fullItem, players);
+    const playerIndex = currentQueue.indexOf(playerId);
+    if (playerIndex === -1) throw new Error('Player is not eligible for this item.');
 
-    const newEvent: Omit<LootEvent, 'id'> = {
+    const processedPlayerIds = status === 'Acquired'
+      ? currentQueue.slice(0, playerIndex + 1)
+      : [playerId];
+    const eventDate = new Date().toISOString();
+    const events: Array<Omit<LootEvent, 'id'>> = processedPlayerIds.map(processedPlayerId => ({
       itemId: fullItem.id,
-      playerId,
-      status: status,
-      date: new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }),
+      playerId: processedPlayerId,
+      status: processedPlayerId === playerId ? status : 'Skipped',
+      date: eventDate,
       raidName: 'Raid Manual',
-      cost
-    };
+      cost: processedPlayerId === playerId ? cost : 0
+    }));
 
-    await addLootEvent(newEvent);
+    const queuePlayerIds = status === 'Acquired'
+      ? rotateQueueThroughPlayer(currentQueue, playerId)
+      : movePlayerToQueueEnd(currentQueue, playerId);
+    const player = players.find(candidate => candidate.id === playerId);
 
-    if (status === 'Acquired') {
-      const player = players.find(p => p.id === playerId);
-      if (player) {
-        const newDkp = Math.max(0, player.dkp - cost);
-        await updatePlayer(playerId, { dkp: newDkp });
-      }
-      // Update item with the last recipient ID
-      await updateItem(fullItem.id, { lastRecipientId: playerId });
-    }
+    await commitDistribution({
+      events,
+      itemId: fullItem.id,
+      queuePlayerIds,
+      lastRecipientId: status === 'Acquired' ? playerId : undefined,
+      playerUpdate: status === 'Acquired' && player
+        ? { playerId, data: { dkp: Math.max(0, player.dkp - cost) } }
+        : undefined
+    });
+
+    setItems(currentItems => currentItems.map(item =>
+      item.id === fullItem.id
+        ? {
+            ...item,
+            queuePlayerIds,
+            ...(status === 'Acquired' ? { lastRecipientId: playerId } : {})
+          }
+        : item
+    ));
 
     // Only decrement quantity or remove from queue if consumeItem is true
     if (consumeItem) {
@@ -134,7 +178,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       distributeItem,
       deletePlayer: async (id) => await deletePlayer(id),
       updatePlayer: async (id, data) => await updatePlayer(id, data),
-      deleteItem: async (id) => await deleteItem(id),
+      deleteItem: handleDeleteItem,
       updateItem: async (id, data) => await updateItem(id, data),
       clearPlayers: async () => {
         const promises = players.map(p => deletePlayer(p.id));

@@ -36,7 +36,7 @@ export const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({ player, 
         const stats: Record<string, { count: number, item: Item }> = {};
 
         lootHistory
-            .filter(e => e.playerId === player.id && e.status === 'Conquistado')
+            .filter(e => e.playerId === player.id && e.status === 'Acquired')
             .forEach(event => {
                 if (!stats[event.itemId]) {
                     const item = items.find(i => i.id === event.itemId);
@@ -92,7 +92,7 @@ export const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({ player, 
                     <div className="space-y-4">
                         <h3 className="flex items-center gap-2 text-lg font-bold text-gray-900 dark:text-white">
                             <span className="material-symbols-outlined text-primary">upcoming</span>
-                            Próximos Itens (Top 5)
+                            Next Items (Top 5)
                         </h3>
                         {nextItems.length > 0 ? (
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -114,7 +114,7 @@ export const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({ player, 
                                 ))}
                             </div>
                         ) : (
-                            <p className="text-gray-500 text-sm italic">Este jogador não está no Top 5 de nenhum item no momento.</p>
+                            <p className="text-gray-500 text-sm italic">This player is not currently in any item's Top 5.</p>
                         )}
                     </div>
 
@@ -122,7 +122,7 @@ export const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({ player, 
                     <div className="space-y-4">
                         <h3 className="flex items-center gap-2 text-lg font-bold text-gray-900 dark:text-white">
                             <span className="material-symbols-outlined text-primary">history</span>
-                            Histórico de Loot
+                            Loot History
                         </h3>
                         {historyStats.length > 0 ? (
                             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -139,7 +139,7 @@ export const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({ player, 
                                 ))}
                             </div>
                         ) : (
-                            <p className="text-gray-500 text-sm italic">Nenhum item conquistado ainda.</p>
+                            <p className="text-gray-500 text-sm italic">No items acquired yet.</p>
                         )}
                     </div>
 

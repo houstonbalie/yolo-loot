@@ -12,6 +12,7 @@ const AdminDistribution: React.FC = () => {
     // Local state for adding items to queue
     const [selectedItem, setSelectedItem] = useState<Item | null>(null);
     const [newItemQuantity, setNewItemQuantity] = useState(1);
+    const [processingPlayerId, setProcessingPlayerId] = useState<string | null>(null);
 
     const currentItem = distributionQueue[0];
 
@@ -33,40 +34,30 @@ const AdminDistribution: React.FC = () => {
 
     const handleAddItem = () => {
         if (selectedItem) {
-            addToDistributionQueue(selectedItem.name, newItemQuantity);
+            addToDistributionQueue(selectedItem, newItemQuantity);
             setSelectedItem(null);
             setNewItemQuantity(1);
         }
     };
 
-    const handleDistribute = (player: Player, action: 'Acquired' | 'Skipped') => {
+    const handleDistribute = async (player: Player, action: 'Acquired' | 'Skipped') => {
         if (!currentItem) return;
-
-        if (action === 'Acquired') {
-            // If player wins, everyone ABOVE them in priority gets a "Skipped" automatically
-            // NOTE: In a rotated queue, "ABOVE" means "Before in the list"
-            const winnerIndex = sortedPlayers.findIndex(p => p.id === player.id);
-
-            if (winnerIndex > 0) {
-                const skippedPlayers = sortedPlayers.slice(0, winnerIndex);
-                skippedPlayers.forEach(skippedPlayer => {
-                    // Mark as passed but DO NOT consume item
-                    distributeItem(skippedPlayer.id, currentItem, 'Skipped', false);
-                });
-            }
-            // Mark winner and CONSUME item
-            distributeItem(player.id, currentItem, 'Acquired', true);
-        } else {
-            // If manually clicking Pass, just mark this player as passed and DO NOT consume item
-            distributeItem(player.id, currentItem, 'Skipped', false);
+        setProcessingPlayerId(player.id);
+        try {
+            await distributeItem(player.id, currentItem, action, action === 'Acquired');
+        } catch (error) {
+            console.error('Error updating distribution queue:', error);
+            alert('Could not update the distribution. Please try again.');
+        } finally {
+            setProcessingPlayerId(null);
         }
     };
 
     const getRarityColor = (rarity: string) => {
         switch (rarity) {
-            case 'Lendário': return 'text-orange-500 border-orange-500/30 bg-orange-500/10';
-            case 'Épico': return 'text-purple-500 border-purple-500/30 bg-purple-500/10';
-            case 'Raro': return 'text-blue-500 border-blue-500/30 bg-blue-500/10';
+            case 'Legendary': return 'text-orange-500 border-orange-500/30 bg-orange-500/10';
+            case 'Epic': return 'text-purple-500 border-purple-500/30 bg-purple-500/10';
+            case 'Rare': return 'text-blue-500 border-blue-500/30 bg-blue-500/10';
             default: return 'text-gray-500 border-gray-500/30 bg-gray-500/10';
         }
     };
@@ -221,6 +212,7 @@ const AdminDistribution: React.FC = () => {
                                     <div className="flex items-center w-full lg:w-auto gap-2">
                                         <button
                                             onClick={() => handleDistribute(player, 'Acquired')}
+                                            disabled={processingPlayerId !== null}
                                             className="flex-1 lg:flex-none px-6 py-2 bg-primary text-white text-sm font-bold rounded-full shadow-sm flex items-center justify-center gap-2 hover:bg-primary-dark transition-colors"
                                         >
                                             <span className="material-symbols-outlined text-[18px]">check</span>
@@ -228,6 +220,7 @@ const AdminDistribution: React.FC = () => {
                                         </button>
                                         <button
                                             onClick={() => handleDistribute(player, 'Skipped')}
+                                            disabled={processingPlayerId !== null}
                                             className="flex-1 lg:flex-none px-6 py-2 text-slate-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 text-sm font-bold rounded-full transition-colors flex items-center justify-center gap-2"
                                         >
                                             <span className="material-symbols-outlined text-[18px]">close</span>

@@ -12,7 +12,6 @@ const ItemRegistration: React.FC = () => {
     const [rarity, setRarity] = useState<Rarity>('Common');
     const [limitToTop5, setLimitToTop5] = useState(false);
     const [stats, setStats] = useState('');
-    const [chance, setChance] = useState('');
     const [cost, setCost] = useState<string>('');
     const [iconUrl, setIconUrl] = useState('');
     const [editingId, setEditingId] = useState<string | null>(null);
@@ -113,7 +112,6 @@ const ItemRegistration: React.FC = () => {
     const resetForm = () => {
         setName('');
         setStats('');
-        setChance('');
         setLimitToTop5(false);
         setCost('');
         setIconUrl('');
@@ -125,12 +123,11 @@ const ItemRegistration: React.FC = () => {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            if (name && stats && chance && cost) {
+            if (name && cost) {
                 const itemData = {
                     name,
                     rarity,
                     stats,
-                    chance,
                     cost: parseInt(cost),
                     limitToTop5,
                     iconUrl: displayIcon
@@ -147,7 +144,7 @@ const ItemRegistration: React.FC = () => {
                 resetForm();
                 setTimeout(() => setSuccess(false), 3000);
             } else {
-                alert("Please fill in all required fields (Name, Attributes, Chance, Cost).");
+                alert("Please fill in all required fields (Name and Cost).");
             }
         } catch (error) {
             console.error("Error saving item:", error);
@@ -159,7 +156,6 @@ const ItemRegistration: React.FC = () => {
         setName(item.name);
         setRarity(item.rarity);
         setStats(item.stats);
-        setChance(item.chance);
         setCost(item.cost.toString());
         setLimitToTop5(item.limitToTop5 || false);
         setIconUrl(item.iconUrl);
@@ -171,7 +167,6 @@ const ItemRegistration: React.FC = () => {
         setName(item.name);
         setRarity(item.rarity);
         setStats(item.stats);
-        setChance(item.chance);
         setCost(item.cost.toString());
         setLimitToTop5(item.limitToTop5 || false);
         setIconUrl(item.iconUrl);
@@ -269,28 +264,16 @@ const ItemRegistration: React.FC = () => {
                                 </div>
                             </div>
 
-                            {/* Stats & Chance */}
-                            <div className="flex flex-col md:flex-row gap-4">
+                            {/* Optional description */}
+                            <div>
                                 <div className="flex-1 space-y-2">
-                                    <label className="text-sm font-bold text-text-main dark:text-gray-200 ml-1">Attributes (Summary)</label>
+                                    <label className="text-sm font-bold text-text-main dark:text-gray-200 ml-1">Optional Description</label>
                                     <input
                                         type="text"
                                         value={stats}
                                         onChange={(e) => setStats(e.target.value)}
                                         className="w-full h-12 px-4 rounded-xl bg-gray-50 dark:bg-black/20 border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-primary outline-none dark:text-white"
-                                        placeholder="Ex: Str: +300, Vit: +50"
-                                        required
-                                    />
-                                </div>
-                                <div className="w-full md:w-1/3 space-y-2">
-                                    <label className="text-sm font-bold text-text-main dark:text-gray-200 ml-1">Drop Chance</label>
-                                    <input
-                                        type="text"
-                                        value={chance}
-                                        onChange={(e) => setChance(e.target.value)}
-                                        className="w-full h-12 px-4 rounded-xl bg-gray-50 dark:bg-black/20 border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-primary outline-none dark:text-white"
-                                        placeholder="Ex: 1.5%"
-                                        required
+                                        placeholder="Ex: Tier 3 wing material"
                                     />
                                 </div>
                             </div>
@@ -409,8 +392,7 @@ const ItemRegistration: React.FC = () => {
                             <div>
                                 <h3 className="text-2xl font-bold text-gray-900 dark:text-white leading-tight">{name || 'Item Name'}</h3>
                                 <div className="flex flex-wrap items-center gap-3 mt-3">
-                                    <span className="text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 px-3 py-1.5 rounded-lg border border-gray-100 dark:border-gray-700">{stats || 'Attributes...'}</span>
-                                    <span className="text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 px-3 py-1.5 rounded-lg border border-gray-100 dark:border-gray-700">Chance: {chance || '0%'}</span>
+                                    <span className="text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 px-3 py-1.5 rounded-lg border border-gray-100 dark:border-gray-700">{stats || 'Optional description...'}</span>
                                 </div>
                             </div>
 
@@ -467,7 +449,6 @@ const ItemRegistration: React.FC = () => {
                                     <h3 className="font-bold text-text-main dark:text-white leading-tight truncate">{item.name}</h3>
                                     <div className="flex justify-between items-center mt-2">
                                         <span className="text-xs text-text-muted dark:text-gray-400">{item.cost} Garnet</span>
-                                        <span className="text-xs text-text-muted dark:text-gray-400">{item.chance}</span>
                                     </div>
                                 </div>
                             </div>

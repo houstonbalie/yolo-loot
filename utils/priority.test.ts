@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { Item, Player } from '../types';
-import { getNewPlayerInsertionIndex, getPlayerQueue, movePlayerToQueueEnd, rotateQueueThroughPlayer } from './priority';
+import { getNewPlayerInsertionIndex, getOriginalPlayerQueue, getPlayerQueue, movePlayerToQueueEnd, rotateQueueThroughPlayer } from './priority';
 
 const player = (id: string, cp: string, excludedItemIds: string[] = []): Player => ({
     id,
@@ -28,7 +28,7 @@ const item = (data: Partial<Item> = {}): Item => ({
 const players = [player('low', '1K'), player('high', '3K'), player('mid', '2K')];
 
 describe('persistent item queues', () => {
-    it('initializes legacy items by CP', () => {
+    it('initializes the original item order by CP', () => {
         expect(getPlayerQueue(item(), players).map(({ id }) => id))
             .toEqual(['high', 'mid', 'low']);
     });
@@ -39,7 +39,7 @@ describe('persistent item queues', () => {
     });
 
     it('preserves a persisted order, ignores stale IDs and appends missing players', () => {
-        expect(getPlayerQueue(item({ queuePlayerIds: ['mid', 'deleted', 'high', 'mid'] }), players).map(({ id }) => id))
+        expect(getPlayerQueue(item({ manualQueueEnabled: true, queuePlayerIds: ['mid', 'deleted', 'high', 'mid'] }), players).map(({ id }) => id))
             .toEqual(['mid', 'high', 'low']);
     });
 
@@ -49,6 +49,12 @@ describe('persistent item queues', () => {
             .not.toContain('excluded');
         expect(getPlayerQueue(item({ id: 'item-2' }), [...players, excluded]).map(({ id }) => id)[0])
             .toBe('excluded');
+    });
+
+    it('keeps inactive players out of every item queue', () => {
+        const inactive = { ...player('inactive', '99K'), isActive: false };
+        expect(getPlayerQueue(item({ manualQueueEnabled: true, queuePlayerIds: ['inactive', 'mid', 'high', 'low'] }), [...players, inactive]).map(({ id }) => id))
+            .toEqual(['mid', 'high', 'low']);
     });
 
     it('moves only a manually skipped player to the end', () => {
@@ -70,13 +76,29 @@ describe('persistent item queues', () => {
     });
 
     it('keeps a newly appended player at the visible end', () => {
-        const currentQueue = getPlayerQueue(item({ queuePlayerIds: ['mid', 'low', 'high'] }), players)
+        const currentQueue = getPlayerQueue(item({ manualQueueEnabled: true, queuePlayerIds: ['mid', 'low', 'high'] }), players)
             .map(({ id }) => id);
-        expect(getNewPlayerInsertionIndex(currentQueue, players, '9K', true)).toBe(3);
+        expect(getNewPlayerInsertionIndex(currentQueue, true)).toBe(3);
     });
 
-    it('inserts by CP when appending to the end is disabled', () => {
-        expect(getNewPlayerInsertionIndex(['mid', 'low', 'high'], players, '2.5K', false)).toBe(0);
-        expect(getNewPlayerInsertionIndex(['low', 'high', 'mid'], players, '1.5K', false)).toBe(0);
+    it('inserts at the beginning without using CP when appending is disabled', () => {
+        expect(getNewPlayerInsertionIndex(['mid', 'low', 'high'], false)).toBe(0);
+        expect(getNewPlayerInsertionIndex(['low', 'high', 'mid'], false)).toBe(0);
+    });
+
+    it('can display the original per-item order even when a manual queue exists', () => {
+        expect(getOriginalPlayerQueue(item({ lastRecipientId: 'mid', manualQueueEnabled: true, queuePlayerIds: ['high', 'low', 'mid'] }), players).map(({ id }) => id))
+            .toEqual(['low', 'high', 'mid']);
+    });
+
+    it('ignores stale persisted queues until manual ordering is explicitly enabled', () => {
+        expect(getPlayerQueue(item({ lastRecipientId: 'mid', queuePlayerIds: ['mid', 'high', 'low'] }), players).map(({ id }) => id))
+            .toEqual(['low', 'high', 'mid']);
+    });
+
+    it('rotates the complete original queue before applying a top-five limit', () => {
+        const rankedPlayers = Array.from({ length: 7 }, (_, index) => player(`p${7 - index}`, `${7 - index}K`));
+        expect(getOriginalPlayerQueue(item({ lastRecipientId: 'p2', limitToTop5: true }), rankedPlayers).map(({ id }) => id))
+            .toEqual(['p1', 'p7', 'p6', 'p5', 'p4']);
     });
 });

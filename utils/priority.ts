@@ -1,10 +1,37 @@
 import { Item, Player } from '../types';
 import { parseCP } from './formatters';
 
-export const getPlayerQueue = (item: Item, players: Player[]): Player[] => {
-    const eligiblePlayers = players.filter(player =>
-        !(player.excludedItemIds ?? []).includes(item.id)
+const getEligiblePlayers = (item: Item, players: Player[]): Player[] =>
+    players.filter(player =>
+        player.isActive !== false
+        && !(player.excludedItemIds ?? []).includes(item.id)
     );
+
+export const getOriginalPlayerQueue = (
+    item: Item,
+    players: Player[],
+    applyTop5Limit: boolean = true
+): Player[] => {
+    let queue = getEligiblePlayers(item, players)
+        .sort((a, b) => parseCP(b.cp) - parseCP(a.cp));
+
+    if (item.lastRecipientId && queue.length > 0) {
+        const lastIndex = queue.findIndex(player => player.id === item.lastRecipientId);
+        if (lastIndex !== -1) {
+            const nextIndex = (lastIndex + 1) % queue.length;
+            queue = [...queue.slice(nextIndex), ...queue.slice(0, nextIndex)];
+        }
+    }
+
+    return item.limitToTop5 && applyTop5Limit ? queue.slice(0, 5) : queue;
+};
+
+export const getPlayerQueue = (item: Item, players: Player[], applyTop5Limit: boolean = true): Player[] => {
+    if (!item.manualQueueEnabled) {
+        return getOriginalPlayerQueue(item, players, applyTop5Limit);
+    }
+
+    const eligiblePlayers = getEligiblePlayers(item, players);
 
     const playersById = new Map(eligiblePlayers.map(player => [player.id, player]));
     const orderedPlayers: Player[] = [];
@@ -25,27 +52,13 @@ export const getPlayerQueue = (item: Item, players: Player[]): Player[] => {
         : [...missingPlayers];
 
     // 2. Filter Top 5 if item has limit enabled
-    if (item.limitToTop5) {
+    if (item.limitToTop5 && applyTop5Limit) {
         sorted = sorted.slice(0, 5);
     }
 
     // Legacy documents are rotated from their last recipient once. Persisted queues
     // already represent the next player at index zero.
-    if (!item.queuePlayerIds && item.lastRecipientId) {
-        const lastIndex = sorted.findIndex(p => p.id === item.lastRecipientId);
-        if (lastIndex !== -1) {
-            // "Next" person is index + 1
-            // We rotate the array so the next eligible person is at index 0
-            const nextStartIndex = (lastIndex + 1) % sorted.length;
-
-            // If we are at the end, nextStartIndex is 0, so it's just the sorted list.
-            if (nextStartIndex === 0) return sorted;
-
-            const part1 = sorted.slice(nextStartIndex);
-            const part2 = sorted.slice(0, nextStartIndex);
-            return [...part1, ...part2];
-        }
-    }
+    if (!item.queuePlayerIds) return getOriginalPlayerQueue(item, players, applyTop5Limit);
 
     return sorted;
 };
@@ -70,16 +83,7 @@ export const movePlayerToQueueEnd = (queuePlayerIds: string[], playerId: string)
 
 export const getNewPlayerInsertionIndex = (
     queuePlayerIds: string[],
-    players: Player[],
-    newPlayerCp: string,
     appendToQueueEnd: boolean
 ): number => {
-    if (appendToQueueEnd) return queuePlayerIds.length;
-
-    const playersById = new Map<string, Player>(players.map(player => [player.id, player]));
-    const insertionIndex = queuePlayerIds.findIndex(id =>
-        parseCP(playersById.get(id)?.cp ?? '0') < parseCP(newPlayerCp)
-    );
-
-    return insertionIndex === -1 ? queuePlayerIds.length : insertionIndex;
+    return appendToQueueEnd ? queuePlayerIds.length : 0;
 };

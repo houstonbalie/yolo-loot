@@ -10,6 +10,7 @@ export interface Player {
   avatarUrl: string;
   status: 'Online' | 'Offline';
   excludedItemIds?: string[];
+  isActive?: boolean;
 }
 
 export type Rarity = 'Legendary' | 'Epic' | 'Rare' | 'Uncommon' | 'Common';
@@ -19,12 +20,13 @@ export interface Item {
   name: string;
   rarity: Rarity;
   stats: string;
-  chance: string;
+  chance?: string; // Legacy field kept for existing Firestore documents
   iconUrl: string;
   cost: number; // DKP Cost
   lastRecipientId?: string; // ID of the last player who received this item
   limitToTop5?: boolean; // If true, only the top 5 players are eligible
   queuePlayerIds?: string[]; // Persistent, circular distribution order
+  manualQueueEnabled?: boolean;
 }
 
 export type NewPlayer = Omit<Player, 'id' | 'dkp' | 'avatarUrl' | 'status'> & {

@@ -61,7 +61,8 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       ...newPlayerData,
       dkp: 0,
       avatarUrl: newPlayerData.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${newPlayerData.name}`,
-      status: 'Online'
+      status: 'Online',
+      isActive: true
     };
 
     const itemQueues = items
@@ -70,8 +71,6 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         const queuePlayerIds = getQueuePlayerIds(item, players);
         const insertionIndex = getNewPlayerInsertionIndex(
           queuePlayerIds,
-          players,
-          newPlayer.cp,
           appendToQueueEnd
         );
         return { itemId: item.id, queuePlayerIds, insertionIndex };
@@ -137,7 +136,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       events,
       itemId: fullItem.id,
       queuePlayerIds,
-      lastRecipientId: status === 'Acquired' ? playerId : undefined,
+      lastRecipientId: playerId,
       playerUpdate: status === 'Acquired' && player
         ? { playerId, data: { dkp: Math.max(0, player.dkp - cost) } }
         : undefined
@@ -148,7 +147,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         ? {
             ...item,
             queuePlayerIds,
-            ...(status === 'Acquired' ? { lastRecipientId: playerId } : {})
+            lastRecipientId: playerId
           }
         : item
     ));

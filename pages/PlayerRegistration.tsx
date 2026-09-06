@@ -19,6 +19,7 @@ const PlayerRegistration: React.FC = () => {
     const [viewingPlayer, setViewingPlayer] = useState<Player | null>(null);
     const [excludedItemIds, setExcludedItemIds] = useState<string[]>([]);
     const [appendToQueueEnd, setAppendToQueueEnd] = useState(true);
+    const [updatingPlayerId, setUpdatingPlayerId] = useState<string | null>(null);
 
     const classAvatars: Record<ClassType, string> = {
         'Elf': 'https://api.dicebear.com/7.x/avataaars/svg?seed=Elf&backgroundColor=c0aede',
@@ -159,17 +160,17 @@ const PlayerRegistration: React.FC = () => {
         }
     };
 
-    const parseCP = (cpStr: string): number => {
-        const cleanStr = cpStr.toUpperCase().replace(/[^0-9.KMB]/g, '');
-        let multiplier = 1;
-        if (cleanStr.endsWith('K')) multiplier = 1000;
-        else if (cleanStr.endsWith('M')) multiplier = 1000000;
-        else if (cleanStr.endsWith('B')) multiplier = 1000000000;
-
-        const numValue = parseFloat(cleanStr.replace(/[KMB]/g, ''));
-        return isNaN(numValue) ? 0 : numValue * multiplier;
+    const handleToggleActive = async (player: Player) => {
+        setUpdatingPlayerId(player.id);
+        try {
+            await updatePlayer(player.id, { isActive: player.isActive === false });
+        } catch (error) {
+            console.error('Error updating player status:', error);
+            alert('Could not update the player status. Please try again.');
+        } finally {
+            setUpdatingPlayerId(null);
+        }
     };
-
 
     return (
         <AdminGuard>
@@ -388,14 +389,6 @@ const PlayerRegistration: React.FC = () => {
                             <h3 className="font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-xs">
                                 {players.length} Players Registered
                             </h3>
-                            <div className="flex gap-2">
-                                <button className="p-2 hover:bg-gray-100 dark:hover:bg-white/5 rounded-lg transition-colors text-gray-400 hover:text-primary">
-                                    <span className="material-symbols-outlined">filter_list</span>
-                                </button>
-                                <button className="p-2 hover:bg-gray-100 dark:hover:bg-white/5 rounded-lg transition-colors text-gray-400 hover:text-primary">
-                                    <span className="material-symbols-outlined">search</span>
-                                </button>
-                            </div>
                         </div>
 
                         <div className="grid gap-3">
@@ -403,11 +396,11 @@ const PlayerRegistration: React.FC = () => {
                                 players.map((player) => (
                                     <div
                                         key={player.id}
-                                        onClick={(e) => {
-                                            // Handle click to open modal, but prevent if clicking action buttons
-                                            setViewingPlayer(player);
-                                        }}
-                                        className="bg-surface-light dark:bg-surface-dark p-4 rounded-2xl border border-gray-100 dark:border-gray-800 flex items-center justify-between group hover:border-primary/30 transition-all shadow-sm cursor-pointer hover:shadow-md"
+                                        onClick={() => setViewingPlayer(player)}
+                                        className={`p-4 rounded-2xl border flex items-center justify-between group transition-all shadow-sm cursor-pointer hover:shadow-md ${player.isActive === false
+                                            ? 'bg-gray-100 dark:bg-gray-900/70 grayscale opacity-70'
+                                            : 'bg-surface-light dark:bg-surface-dark'
+                                            } border-gray-100 dark:border-gray-800 hover:border-primary/30`}
                                     >
                                         <div className="flex items-center gap-4">
                                             <div className="relative">
@@ -416,7 +409,12 @@ const PlayerRegistration: React.FC = () => {
                                                 </div>
                                             </div>
                                             <div>
-                                                <h4 className="font-bold text-gray-900 dark:text-white leading-tight">{player.name}</h4>
+                                                <div className="flex items-center gap-2">
+                                                    <h4 className="font-bold text-gray-900 dark:text-white leading-tight">{player.name}</h4>
+                                                    {player.isActive === false && (
+                                                        <span className="rounded-full bg-gray-300 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-gray-600 dark:bg-gray-700 dark:text-gray-300">Inactive</span>
+                                                    )}
+                                                </div>
                                                 <div className="flex items-center gap-2 text-xs mt-1">
                                                     <span className="px-2 py-0.5 rounded bg-gray-100 dark:bg-white/5 text-gray-500 font-medium">
                                                         {player.class}
@@ -432,6 +430,18 @@ const PlayerRegistration: React.FC = () => {
                                         </div>
 
                                         <div className="flex items-center gap-1 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleToggleActive(player)}
+                                                disabled={updatingPlayerId === player.id}
+                                                className={`p-2 rounded-lg transition-colors disabled:opacity-50 ${player.isActive === false
+                                                    ? 'text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20'
+                                                    : 'text-gray-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20'
+                                                    }`}
+                                                title={player.isActive === false ? 'Reactivate player' : 'Deactivate player'}
+                                            >
+                                                <span className="material-symbols-outlined text-xl">{player.isActive === false ? 'person_check' : 'person_off'}</span>
+                                            </button>
                                             <button
                                                 onClick={() => handleClone(player)}
                                                 className="p-2 text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"

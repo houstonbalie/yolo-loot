@@ -1,7 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { getAuth, signInAnonymously, onAuthStateChanged } from "firebase/auth";
 
-const ADMIN_PASSWORD = 'yololoot123';
+const ADMIN_PASSWORD_HASH = 'dba211d5acf00333a68791439aa8bc92b0f10aca26d16093592a0623194956a4';
+
+const hashPassword = async (password: string) => {
+    const data = new TextEncoder().encode(password);
+    const digest = await crypto.subtle.digest('SHA-256', data);
+    return Array.from(new Uint8Array(digest))
+        .map(byte => byte.toString(16).padStart(2, '0'))
+        .join('');
+};
 
 interface AdminGuardProps {
     children: React.ReactNode;
@@ -29,21 +37,22 @@ const AdminGuard: React.FC<AdminGuardProps> = ({ children }) => {
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         
-        if (password === ADMIN_PASSWORD) {
-            setIsLoading(true);
-            try {
+        setIsLoading(true);
+        try {
+            const passwordHash = await hashPassword(password);
+            if (passwordHash === ADMIN_PASSWORD_HASH) {
                 await signInAnonymously(auth);
                 setIsAuthenticated(true);
                 setError(false);
-            } catch (err) {
-                console.error("Authentication error:", err);
+            } else {
                 setError(true);
-            } finally {
-                setIsLoading(false);
+                setPassword('');
             }
-        } else {
+        } catch (err) {
+            console.error("Authentication error:", err);
             setError(true);
-            setPassword('');
+        } finally {
+            setIsLoading(false);
         }
     };
 

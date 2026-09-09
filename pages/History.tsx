@@ -3,6 +3,7 @@ import { useGame } from '../context/GameContext';
 import { LootStatus, Player } from '../types';
 import { PlayerProfileModal } from '../components/PlayerProfileModal';
 import ConfirmationModal from '../components/ConfirmationModal';
+import { sortHistoryNewestFirst } from '../utils/history';
 
 const PAGE_SIZE = 10;
 
@@ -20,7 +21,7 @@ const History: React.FC = () => {
     const [isClearingHistory, setIsClearingHistory] = useState(false);
 
     // Derived Data
-    const filteredHistory = lootHistory.filter(event => {
+    const filteredHistory = sortHistoryNewestFirst(lootHistory).filter(event => {
         const matchesPlayer = selectedPlayer === 'All' || event.playerId === selectedPlayer;
         const selectedDay = selectedDate.split('-')[2];
         const matchesDate = !selectedDate
